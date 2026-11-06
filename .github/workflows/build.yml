@@ -18,6 +18,7 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
       - name: Locate project
         run: |
+          ls -la
           if [ -f FloatingControls.zip ]; then
             unzip -q -o FloatingControls.zip -d _unpacked
             echo "DIR=_unpacked/FloatingControls" >> $GITHUB_ENV
@@ -25,7 +26,13 @@ jobs:
             echo "DIR=." >> $GITHUB_ENV
           fi
       - name: Build debug APK
-        run: gradle -p "$DIR" assembleDebug --stacktrace
+        run: |
+          set +e
+          gradle -p "$DIR" assembleDebug --console=plain > build.log 2>&1
+          code=$?
+          grep -E "^e: |What went wrong|Execution failed|error:|not found" -A2 build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+          tail -n 25 build.log
+          exit $code
       - uses: actions/upload-artifact@v4
         with:
           name: FloatingControls-debug-apk
